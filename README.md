@@ -7,6 +7,8 @@ which integrates nicely with the isolation and security features of [Qubes OS](h
 to easily copy credentials to currently focused Qube, to define allow lists for credentials based on Qube names and to
 automatically clear the Qubes clipboard after a configurable amount of time.
 
+![qubes-keepass](https://user-images.githubusercontent.com/49147108/206440037-cf2108f8-8033-4574-bdbe-88f7943c1457.png)
+
 *qubes-keepass* is inspired by [rofi-pass](https://github.com/carnager/rofi-pass) which provides a rofi based frontend
 for the password manager [pass](https://www.passwordstore.org/).
 
@@ -133,6 +135,9 @@ You can also restrict a Qube to only use credentials that are explicitly defined
 `restricted` variable within `qubes-keepass.py`. When copying to these Qubes, only credentials are displayed that have the corresponding
 Qube name explicitly configured in their `QubesKeepass` section.
 
+If you want to setup the custom theme displayed within this README file, just copy the [qubes-keepass.rasi](/theme/qubes-keepass.rasi) and
+the associated [background image](/theme/background.png) to your `~/.config/rofi` folder and add `-theme qubes-keepass` to the `rofi_options`
+variable in `qubes-keepass.py
 
 ### FAQ
 
