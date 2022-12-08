@@ -26,7 +26,7 @@ function main() {
     local vm=$(get_vm)
 
     if [[ -n "${vm}" ]]; then
-        qvm-run ${VAULT} "/home/user/.local/bin/qubes-pass ${vm}"
+        qvm-run ${VAULT} "/home/user/.local/bin/qubes-keepass.py ${vm}"
     fi
 }
 

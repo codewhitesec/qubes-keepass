@@ -27,16 +27,16 @@ url_length = None
 
 copy_url = 'Ctrl+U'
 copy_password = 'Ctrl+c'
-copy_username =  'Ctrl+C'
+copy_username = 'Ctrl+C'
 
-lockfile = Path.home() / '.qubes-pass.lock'
+lockfile = Path.home() / '.qubes-keepass.lock'
 rofi_options = ['-normal-window', '-dmenu', '-format', 'i']
 
 
 #############################################################
 ##                  Argument Layout                        ##
 #############################################################
-parser = argparse.ArgumentParser(description='''qubes-pass v1.0.0 - A KeePassXC frontend for Qubes''')
+parser = argparse.ArgumentParser(description='''qubes-keepass v1.0.0 - A rofi based KeePassXC frontend for Qubes''')
 parser.add_argument('qube', help='qube to copy the credential to')
 
 
@@ -129,7 +129,7 @@ class Credential:
 
         Parameters:
             None
-            
+
         Returns:
             default dictionary output of the Credential attributes
         '''
@@ -168,7 +168,7 @@ class Credential:
             return dict()
 
         for line in lines[1:]:
-            
+
             try:
                 setting, value = line.split('=', 1)
 
@@ -317,7 +317,7 @@ class CredentialCollection:
         formatted = ''
 
         for credential in self.credentials:
-            
+
             folder = credential.path.parent.name or 'Root'
 
             formatted += lcut(credential.title, title_length)
