@@ -33,7 +33,7 @@ vault $anyvm allow
 ```
 
 According to your preferences, you could also choose `ask` instead of the `allow` action. Now copy the
-[qubes-keepass-dom0.sh](./qubes-keepass-dom0.sh) script to an location within your `$PATH` environment variable
+[qubes-keepass-dom0.sh](./qubes-keepass-dom0.sh) script to a location within your `$PATH` environment variable
 and make sure that it is executable.
 
 Finally, set up a shortcut for invoking `qubes-keepass-dom0.sh` in your *i3* configuration file and make sure that
@@ -153,5 +153,5 @@ If you are really concerned about the DBus access, you can configure Keepass to 
 **A**: It depends. `custom.QubesKeepass` adds a communication channel from your `vault` VM to other VMs. This communication channel is only unidirectional,
 but it could still allow to exfiltrate data from your `vault` into an *online* VM. That being said, the same is true for other Qubes mechanisms like
 [split-SSH](https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/split-ssh.md). If having a malicious process in your `vault` VM that
-exfiltrates data using your clipboard is something you worry about. you should use `ask`. If you like things more comfortable, you should use `allow` instead.
+exfiltrates data using your clipboard is something you worry about, you should use `ask`. If you like things more comfortable, you should use `allow` instead.
 When using `allow` you can also add a notifier command to the *qrexec* service, to be at least informed, when something gets copied.
