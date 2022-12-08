@@ -4,7 +4,7 @@ VAULT="vault"
 
 function get_id() {
     # Get the id of the currently focused window. This function
-    # was copied from the default resources that are shiped with
+    # was copied from the default resources that are shipped with
     # Qubes.
     local id=$(xprop -root _NET_ACTIVE_WINDOW)
     echo ${id##* }
@@ -13,7 +13,7 @@ function get_id() {
 function get_vm() {
     # Get the name of the VM the currently focused window belongs to.
     # This function was copied from the default resources that are
-    # shiped with Qubes.
+    # shipped with Qubes.
     local id=$(get_id)
     local vm=$(xprop -id $id | grep '_QUBES_VMNAME(STRING)')
     local vm=${vm#*\"} # extract vmname
