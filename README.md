@@ -24,8 +24,8 @@ is [i3](https://www.qubes-os.org/doc/i3/) and that you have an *AppVM Qube* call
 
 #### dom0
 
-In `dom0` create a policy file for the [custom.QubesKeepass](/etc/qubes-rpc/policy/custom.QubesKeepass) *qrexec* service.
-This service will be invoked by your `vault` Qube to copy credentials to other *AppVMs*:
+In `dom0` create a policy file for the `custom.QubesKeepass` *qrexec* service. This service will be invoked by your `vault`
+Qube to copy credentials to other *AppVMs*:
 
 ```console
 [user@dom0 ~]$ cat /etc/qubes-rpc/policy/custom.QubesKeepass
@@ -143,13 +143,13 @@ variable in `qubes-keepass.py`.
 
 ----
 
-**Q**: Isn't exposing credentials via DBus insecure?
+**Q**: Isn't exposing credentials via DBus insecure?\
 **A**: No. Despite Keepass attempts to protect your credentials in memory, you should assume that each process running on the same machine
 as your Keepass instance is able to access these credentials by dumping them from memory. DBus access makes the process of dumping credentials
 more comfortable, but it is not a requirement. Moreover, your `vault` VM is considered trusted and other VMs are not able to access your secrets.
 If you are really concerned about the DBus access, you can configure Keepass to display a prompt for each credential access via DBus.
 
-**Q**: Should I configure `custom.QubesKeepass` using the `ask` or `allow` policy?
+**Q**: Should I configure `custom.QubesKeepass` using the `ask` or `allow` policy?\
 **A**: It depends. `custom.QubesKeepass` adds a communication channel from your `vault` VM to other VMs. This communication channel is only unidirectional,
 but it could still allow to exfiltrate data from your `vault` into an *online* VM. That being said, the same is true for other Qubes mechanisms like
 [split-SSH](https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/split-ssh.md). If having a malicious process in your `vault` VM that
