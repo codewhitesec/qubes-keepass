@@ -164,7 +164,7 @@ class Credential:
         settings = {}
         lines = self.notes.split('\n')
 
-        if lines[0].lower() != '[qubespass]':
+        if lines[0].lower() != '[QubesKeepass]':
             return dict()
 
         for line in lines[1:]:

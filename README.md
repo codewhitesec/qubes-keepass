@@ -135,9 +135,9 @@ You can also restrict a Qube to only use credentials that are explicitly defined
 `restricted` variable within `qubes-keepass.py`. When copying to these Qubes, only credentials are displayed that have the corresponding
 Qube name explicitly configured in their `QubesKeepass` section.
 
-If you want to setup the custom theme displayed within this README file, just copy the [qubes-keepass.rasi](/theme/qubes-keepass.rasi) and
-the associated [background image](/theme/background.png) to your `~/.config/rofi` folder and add `-theme qubes-keepass` to the `rofi_options`
-variable in `qubes-keepass.py
+If you want to setup the custom theme displayed within this README file, just copy the [qubes-keepass.rasi](/theme/qubes-keepass.rasi) theme
+and the associated [background image](/theme/background.png) to your `~/.config/rofi` folder and add `-theme qubes-keepass` to the `rofi_options`
+variable in `qubes-keepass.py`.
 
 ### FAQ
 
