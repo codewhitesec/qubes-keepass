@@ -108,7 +108,7 @@ to previously determined focused Qube using the `custom.QubesKeepass` *qrexec* s
 Within *rofi* you can press the following keys to copy different attributes of the credential:
 
 * `Return` or `Ctrl+c`: Copy password
-* `Ctrl+C`: Copy username
+* `Ctrl+b`: Copy username
 * `Ctrl+Shift+u`: Copy URL
 
 
@@ -140,6 +140,9 @@ Qube name explicitly configured in their `QubesKeepass` section.
 
 The `unrestricted` option in `qubes-keepass.py` is mutually exclusive to `restricted` and does exactly the opposite. When configuring Qube
 names for this option, all other Qubes except the specified one are treated as *restricted*.
+
+When `regex` in `qubes-keepass.py` is set to true, all Qube name definitions are treated as regular expressions. This affects all definitions
+within the `restricted` and `unrestricted` parameter as well as all Qube definitions within *KeePass* credentials.
 
 If you want to setup the custom theme displayed within this README file, just copy the [qubes-keepass.rasi](/theme/qubes-keepass.rasi) theme
 and the associated [background image](/theme/background.png) to your `~/.config/rofi` folder and add `-theme qubes-keepass` to the `rofi_options`

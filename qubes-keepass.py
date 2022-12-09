@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import sys
 import time
 import argparse
 import subprocess
@@ -17,7 +19,9 @@ from gi.repository import Secret
 #############################################################
 ##                  Global variables                       ##
 #############################################################
+regex = True
 timeout = 10
+
 restricted = []
 unrestricted = []
 
@@ -35,6 +39,15 @@ lockfile = Path.home() / '.qubes-keepass.lock'
 rofi_options = ['-p', 'qubes-keepass', '-normal-window', '-dmenu', '-format', 'i']
 rofi_options += ['-kb-move-char-back', 'Left']
 
+if regex:
+
+    try:
+        restricted = list(map(re.compile, restricted))
+        unrestricted = list(map(re.compile, unrestricted))
+
+    except re.error:
+        print('[-] Regex error. Make sure that (un)restricted contains valid regular expressions.')
+        sys.exit(1)
 
 #############################################################
 ##                  Argument Layout                        ##
@@ -88,6 +101,31 @@ def parse_qube_list(qube_list: str) -> list[str]:
     return qubes
 
 
+def contains_qube(qube_list: list, qube: str) -> bool:
+    '''
+    Checks whether the specified qube is contained within the specified qube list.
+
+    Parameters:
+        qube_list           list of qube names or compiled regular expressions
+        qube                qube name to check for
+
+    Returns:
+        true if the specified qube name is contained within the list
+    '''
+    if not qube_list:
+        return False
+
+    for entry in qube_list:
+
+        if type(entry) == str and entry == qube:
+            return True
+
+        elif entry.fullmatch(qube):
+            return True
+
+    return False
+
+
 class RofiAbortedException(Exception):
     '''
     Custom exception class.
@@ -126,6 +164,15 @@ class Credential:
 
         self.qubes = parse_qube_list(settings.get('qubes'))
         self.timeout = int(settings.get('timeout', timeout))
+
+        if regex and self.qubes is not None:
+
+            try:
+                self.qubes = list(map(re.compile, self.qubes))
+
+            except re.error:
+                print(f'[+] Credential {self.path} contains invalid regex.')
+                sys.exit(1)
 
     def __str__(self) -> str:
         '''
@@ -169,7 +216,7 @@ class Credential:
         settings = {}
         lines = self.notes.split('\n')
 
-        if lines[0].lower() != '[qubeskeepass]':
+        if lines[0].lower().replace('-', '') != '[qubeskeepass]':
             return dict()
 
         for line in lines[1:]:
@@ -220,17 +267,17 @@ class Credential:
         Returns:
             None
         '''
-        if self.qubes is not None and qube not in self.qubes:
+        if self.qubes is not None and not contains_qube(self.qubes, qube):
             print(f'[-] Copy operation blocked. Selected credential is not allowed for {qube}.')
             return
 
         if self.qubes is None:
 
-            if restricted and qube in restricted:
+            if restricted and contains_qube(restricted, qube):
                 print(f'[-] Copy operation blocked. {qube} is a restricted qube.')
                 return
 
-            if unrestricted and qube not in unrestricted:
+            if unrestricted and not contains_qube(unrestricted, qube):
                 print(f'[-] Copy operation blocked. {qube} is a restricted qube.')
                 return
 
@@ -308,15 +355,15 @@ class CredentialCollection:
 
         for cred in self.credentials:
 
-            if cred.qubes is not None and qube in cred.qubes:
+            if cred.qubes is not None and contains_qube(cred.qubes, qube):
                 filtered.append(cred)
 
             elif cred.qubes is None:
 
-                if unrestricted and qube not in unrestricted:
+                if unrestricted and not contains_qube(unrestricted, qube):
                     continue
 
-                elif restricted and qube in restricted:
+                elif restricted and contains_qube(restricted, qube):
                     continue
 
                 filtered.append(cred)
