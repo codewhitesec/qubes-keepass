@@ -18,7 +18,8 @@ from gi.repository import Secret
 ##                  Global variables                       ##
 #############################################################
 timeout = 10
-restricted = ['restricted-qube']
+restricted = []
+unrestricted = []
 
 title_length = 18
 folder_length = 18
@@ -27,10 +28,12 @@ url_length = None
 
 copy_url = 'Ctrl+U'
 copy_password = 'Ctrl+c'
-copy_username = 'Ctrl+C'
+copy_username = 'Ctrl+b'
 
 lockfile = Path.home() / '.qubes-keepass.lock'
-rofi_options = ['-normal-window', '-dmenu', '-format', 'i']
+
+rofi_options = ['-p', 'qubes-keepass', '-normal-window', '-dmenu', '-format', 'i']
+rofi_options += ['-kb-move-char-back', 'Left']
 
 
 #############################################################
@@ -61,7 +64,7 @@ def lcut(item: str, padding: int) -> str:
         return item.ljust(padding)
 
     else:
-        return item[:padding - 2] + '..'
+        return item[:padding - 4] + '..  '
 
 
 def parse_qube_list(qube_list: str) -> list[str]:
@@ -96,18 +99,20 @@ class Credential:
     Represents a credential entry present within KeePass.
     '''
 
-    def __init__(self, item: Secret.Item) -> None:
+    def __init__(self, item: Secret.Item, service: Secret.Service) -> None:
         '''
         Initialize the Credential object with an Secret.Item object
         obtained via DBus.
 
         Parameters:
             item            Secret.Item obtained from KeePass
+            service         the Secret.Service DBus connection
 
         Returns:
             None
         '''
         self.item = item
+        self.service = service
         self.attributes = item.get_attributes()
 
         self.url = self.attributes.get('URL')
@@ -164,7 +169,7 @@ class Credential:
         settings = {}
         lines = self.notes.split('\n')
 
-        if lines[0].lower() != '[QubesKeepass]':
+        if lines[0].lower() != '[qubeskeepass]':
             return dict()
 
         for line in lines[1:]:
@@ -193,7 +198,7 @@ class Credential:
             secret for the credential
         '''
         if self.item.locked:
-            self.item.service.unlock_sync([self.item])
+            self.service.unlock_sync([self.item])
 
         self.item.load_secret_sync()
         return self.item.get_secret().get_text()
@@ -219,9 +224,15 @@ class Credential:
             print(f'[-] Copy operation blocked. Selected credential is not allowed for {qube}.')
             return
 
-        if self.qubes is None and qube in restricted:
-            print(f'[-] Copy operation blocked. {qube} is a restricted qube.')
-            return
+        if self.qubes is None:
+
+            if restricted and qube in restricted:
+                print(f'[-] Copy operation blocked. {qube} is a restricted qube.')
+                return
+
+            if unrestricted and qube not in unrestricted:
+                print(f'[-] Copy operation blocked. {qube} is a restricted qube.')
+                return
 
         value = ''
 
@@ -238,7 +249,8 @@ class Credential:
             value = self.url.encode()
 
         process = subprocess.Popen(['qrexec-client-vm', qube, 'custom.QubesKeepass'], stdin=subprocess.PIPE)
-        process.communicate(input=value)
+        process.stdin.write(value)
+        process.stdin.close()
 
         lockfile.touch()
         timestamp = lockfile.stat().st_mtime
@@ -256,7 +268,8 @@ class Credential:
             lockfile.unlink()
 
             process = subprocess.Popen(['qrexec-client-vm', qube, 'custom.QubesKeepass'], stdin=subprocess.PIPE)
-            process.communicate(input=''.encode())
+            process.stdin.write(''.encode())
+            process.stdin.close()
 
             print(f'[+] Clipboard of {qube} cleared.')
 
@@ -298,7 +311,14 @@ class CredentialCollection:
             if cred.qubes is not None and qube in cred.qubes:
                 filtered.append(cred)
 
-            elif cred.qubes is None and qube not in restricted:
+            elif cred.qubes is None:
+
+                if unrestricted and qube not in unrestricted:
+                    continue
+
+                elif restricted and qube in restricted:
+                    continue
+
                 filtered.append(cred)
 
         self.credentials = filtered
@@ -358,6 +378,9 @@ class CredentialCollection:
             selected = process.communicate(input=str(self).encode())[0]
             selected = int(selected.decode().strip())
 
+            if selected == -1:
+                raise RofiAbortedException('User selected empty credential')
+
         except ValueError:
             raise RofiAbortedException('rofi selection was aborted by user')
 
@@ -379,7 +402,7 @@ class CredentialCollection:
         collection = Secret.Collection.for_alias_sync(service, "default", Secret.CollectionCreateFlags.NONE, None)
 
         for item in collection.get_items():
-            credential = Credential(item)
+            credential = Credential(item, service)
             credentials.append(credential)
 
         return CredentialCollection(credentials)
@@ -400,6 +423,11 @@ def main() -> None:
         None
     '''
     args = parser.parse_args()
+
+    if restricted and unrestricted:
+        print("[-] The configuration options 'restricted' and 'unrestricted' are mutually exclusive.")
+        print('[-] Configure only one of them and leave the other empty to continue.')
+        return
 
     try:
         service = Secret.Service.get_sync(Secret.ServiceFlags.OPEN_SESSION | Secret.ServiceFlags.LOAD_COLLECTIONS)

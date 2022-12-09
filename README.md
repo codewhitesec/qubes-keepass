@@ -29,11 +29,13 @@ Qube to copy credentials to other *AppVMs*:
 
 ```console
 [user@dom0 ~]$ cat /etc/qubes-rpc/policy/custom.QubesKeepass
-vault $anyvm allow
+vault $anyvm allow notify=true
 ```
 
-According to your preferences, you could also choose `ask` instead of the `allow` action. Now copy the
-[qubes-keepass-dom0.sh](./qubes-keepass-dom0.sh) script to a location within your `$PATH` environment variable
+According to your preferences, you could also choose `ask` instead of the `allow` action or remove the `notify=true` option,
+if you do not want to be notified when something gets copied via *qubes-keepass*.
+
+Now copy the [qubes-keepass-dom0.sh](./qubes-keepass-dom0.sh) script to a location within your `$PATH` environment variable
 and make sure that it is executable.
 
 Finally, set up a shortcut for invoking `qubes-keepass-dom0.sh` in your *i3* configuration file and make sure that
@@ -88,11 +90,11 @@ is essentially just a pipe to `xclip` and looks like this:
 [user@app-vm ~]$ cat etc/qubes-rpc/custom.QubesKeepass
 #!/usr/bin/sh
 
-# Do not remove the redirect, as xclip will block the qrexec call without it.
-xclip -selection clipboard &> /dev/null
+xclip -selection clipboard
 ```
 
-Make sure that is executable and that such a file exists on each *AppVM* you want to use *qubes-keepass* with.
+Make sure that is executable and that such a file exists on each *AppVM* you want to use *qubes-keepass* with. As the *qrexec*
+service is defined outside the persistent portions of an *AppVM*, you probably want to set it up within the *AppVMs* template.
 
 
 ### Usage
@@ -129,11 +131,15 @@ timeout = 5
 
 The `timeout` key specifies a credential specific timeout for the credential. The `qubes` key specifies an allow list of qubes for
 the credential. In the example above, the credential will only be listed when you are currently copying into the `work` or `personal`
-Qube. When copying in other Qubes, the credential is not shown and not allowed to be copied.
+Qube. When copying in other Qubes, the credential is not shown and not allowed to be copied. If you want to hide a credential from
+*qubes-keepass*, just restrict it to a non existing Qube name like `qubes = None`.
 
 You can also restrict a Qube to only use credentials that are explicitly defined for this Qube. Just add the desired Qubes to the
 `restricted` variable within `qubes-keepass.py`. When copying to these Qubes, only credentials are displayed that have the corresponding
 Qube name explicitly configured in their `QubesKeepass` section.
+
+The `unrestricted` option in `qubes-keepass.py` is mutually exclusive to `restricted` and does exactly the opposite. When configuring Qube
+names for this option, all other Qubes except the specified one are treated as *restricted*.
 
 If you want to setup the custom theme displayed within this README file, just copy the [qubes-keepass.rasi](/theme/qubes-keepass.rasi) theme
 and the associated [background image](/theme/background.png) to your `~/.config/rofi` folder and add `-theme qubes-keepass` to the `rofi_options`
@@ -154,4 +160,3 @@ If you are really concerned about the DBus access, you can configure Keepass to 
 but it could still allow to exfiltrate data from your `vault` into an *online* VM. That being said, the same is true for other Qubes mechanisms like
 [split-SSH](https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/split-ssh.md). If having a malicious process in your `vault` VM that
 exfiltrates data using your clipboard is something you worry about, you should use `ask`. If you like things more comfortable, you should use `allow` instead.
-When using `allow` you can also add a notifier command to the *qrexec* service, to be at least informed, when something gets copied.
