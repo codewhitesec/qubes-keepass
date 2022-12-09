@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import sys
 import time
 import argparse
 import subprocess
@@ -38,16 +37,6 @@ lockfile = Path.home() / '.qubes-keepass.lock'
 
 rofi_options = ['-p', 'qubes-keepass', '-normal-window', '-dmenu', '-format', 'i']
 rofi_options += ['-kb-move-char-back', 'Left']
-
-if regex:
-
-    try:
-        restricted = list(map(re.compile, restricted))
-        unrestricted = list(map(re.compile, unrestricted))
-
-    except re.error:
-        print('[-] Regex error. Make sure that (un)restricted contains valid regular expressions.')
-        sys.exit(1)
 
 #############################################################
 ##                  Argument Layout                        ##
@@ -166,13 +155,7 @@ class Credential:
         self.timeout = int(settings.get('timeout', timeout))
 
         if regex and self.qubes is not None:
-
-            try:
-                self.qubes = list(map(re.compile, self.qubes))
-
-            except re.error:
-                print(f'[+] Credential {self.path} contains invalid regex.')
-                sys.exit(1)
+            self.qubes = list(map(re.compile, self.qubes))
 
     def __str__(self) -> str:
         '''
@@ -482,9 +465,23 @@ def main() -> None:
     except Exception as e:
         print('[-] Unable to get Secret Service connection.')
         print('[-] Error Message: ' + str(e))
+        return
 
-    collection = CredentialCollection.load(service)
-    collection.filter_credentials(args.qube)
+    try:
+        if regex:
+
+            for lst in [restricted, unrestricted]:
+                compiled = list(map(re.compile, lst))
+                lst.clear()
+                lst += compiled
+
+        collection = CredentialCollection.load(service)
+        collection.filter_credentials(args.qube)
+
+    except re.error as e:
+        print('[-] Regex error. Encountered an invalid regular expression.')
+        print('[-] Error message: ' + str(e))
+        return
 
     try:
         attr, credential = collection.display_rofi(args.qube)
@@ -492,6 +489,7 @@ def main() -> None:
 
     except RofiAbortedException:
         print('[+] Aborted.')
+        return
 
 
 main()
