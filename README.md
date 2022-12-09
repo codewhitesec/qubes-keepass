@@ -19,7 +19,8 @@ for the password manager [pass](https://www.passwordstore.org/).
 
 *qubes-keepass* relies on *Qubes qrexec* mechanism and requires multiple installation steps in different Qubes. In the
 following, it is assumed that your *KeePassXC* database is contained within a Qube named `vault`, that your window manager
-is [i3](https://www.qubes-os.org/doc/i3/) and that you have an *AppVM Qube* called `app-vm`.
+is [i3](https://www.qubes-os.org/doc/i3/) and that you have an *AppVM Qube* called `app-vm`. In addition, make sure that
+*rofi* is installed in `vault` and *xclip* is installed in `app-vm`.
 
 
 #### dom0
@@ -95,7 +96,7 @@ For each *AppVM* that is allowed to obtain credentials from *qubes-keepass*, you
 is essentially just a pipe to `xclip` and looks like this:
 
 ```console
-[user@app-vm ~]$ cat etc/qubes-rpc/custom.QubesKeepass
+[user@app-vm ~]$ cat /etc/qubes-rpc/custom.QubesKeepass
 #!/usr/bin/sh
 
 xclip -selection clipboard
