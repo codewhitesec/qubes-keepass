@@ -35,6 +35,14 @@ vault $anyvm allow notify=true
 According to your preferences, you could also choose `ask` instead of the `allow` action or remove the `notify=true` option,
 if you do not want to be notified when something gets copied via *qubes-keepass*.
 
+If you're using Qubes 4.1 and want to follow the new Qrexec policy system:
+
+```console
+[user@dom0 ~]$ cat /etc/qubes/policy.d/30-user.policy
+...
+custom.QubesKeepass * vault @anyvm allow notify=yes
+```
+
 Now copy the [qubes-keepass-dom0.sh](./qubes-keepass-dom0.sh) script to a location within your `$PATH` environment variable
 and make sure that it is executable.
 
