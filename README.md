@@ -78,10 +78,10 @@ Hidden=true
 ```
 
 After restarting the `vault` VM again, the `gnome-keyring-daemon` should no longer start up and you can enable the *Secret
-Service* integration in the *KeePassXC* database settings.
+Service* integration in the *KeePassXC* Tools settings.
 
 Additionally, you need to expose the credentials you want to use with *qubes-keepass* to the *Secret Service* within your
-database security settings. If you simply want to use your complete database with *qubes-keepass*, just select the your
+specific database security settings. If you simply want to use your complete database with *qubes-keepass*, just select the your
 *Root* folder.
 
 Finally, copy the [qubes-keepass.py](./qubes-keepass.py) script to your `vault` VM and make sure it is executable. Also make
