@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import re
 import time
+import hashlib
 import argparse
 import subprocess
+import configparser
 
 from typing import Any
 from pathlib import Path
@@ -15,39 +17,7 @@ require_version('Secret', '1')
 
 from gi.repository import Secret
 
-#############################################################
-##                  Global variables                       ##
-#############################################################
-regex = True
-timeout = 10
 
-restricted = []
-unrestricted = []
-
-title_length = 18
-folder_length = 18
-username_length = 18
-url_length = None
-
-copy_url = 'Ctrl+U'
-copy_password = 'Ctrl+c'
-copy_username = 'Ctrl+b'
-
-lockfile = Path.home() / '.qubes-keepass.lock'
-
-rofi_options = ['-p', 'qubes-keepass', '-normal-window', '-dmenu', '-format', 'i']
-rofi_options += ['-kb-move-char-back', 'Left']
-
-#############################################################
-##                  Argument Layout                        ##
-#############################################################
-parser = argparse.ArgumentParser(description='''qubes-keepass v1.0.0 - A rofi based KeePassXC frontend for Qubes''')
-parser.add_argument('qube', help='qube to copy the credential to')
-
-
-#############################################################
-##               Functions and Classes                     ##
-#############################################################
 def lcut(item: str, padding: int) -> str:
     '''
     Pad the item to the specified length with spaces or cut it
@@ -59,7 +29,7 @@ def lcut(item: str, padding: int) -> str:
     Returns:
         cutted or padded item
     '''
-    if padding is None:
+    if padding is None or padding == 0:
         return item
 
     if len(item) < padding:
@@ -79,8 +49,8 @@ def parse_qube_list(qube_list: str) -> list[str]:
     Returns:
         parsed list of qube names
     '''
-    if qube_list is None:
-        return None
+    if not qube_list:
+        return []
 
     qubes = []
 
@@ -121,6 +91,150 @@ class RofiAbortedException(Exception):
     '''
 
 
+class MissingConfigException(Exception):
+    '''
+    Custom exception class.
+    '''
+
+
+class Config:
+    '''
+    Class for parsing the qubes-keepass configuration file.
+    '''
+
+    instance = None
+    restricted = []
+    unrestricted = []
+
+    config_locations = [
+                         Path.home() / '.config/qubes-keepass.ini',
+                         Path.home() / '.config/qubes-keepass/config.ini',
+                         Path.home() / '.config/qubes-keepass/qubes-keepass.ini',
+                         Path('/etc/qubes-keepass.ini'),
+                         Path('/etc/qubes-keepass/config.ini'),
+                         Path('/etc/qubes-keepass/qubes-keepass.ini'),
+                       ]
+
+    def __init__(self, path: Path) -> None:
+        '''
+        Initialize the configuration from the path of the configuration
+        file.
+
+        Parameters:
+            path            path of the qubes-keepass configuration file
+
+        Returns:
+            None
+        '''
+        self.parser = configparser.ConfigParser()
+        self.parser.read(path)
+
+        Config.restricted = parse_qube_list(self.get('restricted'))
+        Config.unrestricted = parse_qube_list(self.get('unrestricted'))
+
+        Config.instance = self
+
+    def get(self, key: str) -> str:
+        '''
+        Get the specified key from the configuration file. Currently, only
+        unique keys are present and sections are only used for formatting.
+        Therefore we can simply iterate over each section to find the key.
+
+        Parameters:
+            key             key to obtain from the configuration file
+
+        Returns:
+            value for the specified key
+        '''
+        for section in self.parser.sections():
+
+            value = self.parser[section].get(key)
+
+            if value is not None:
+
+                if value == '':
+                    return None
+
+                return value
+
+        raise KeyError(key)
+
+    def getboolean(self, key: str) -> bool:
+        '''
+        Same as get, but returns bool.
+
+        Parameters:
+            key             key to obtain from the configuration file
+
+        Returns:
+            value for the specified key
+        '''
+        for section in self.parser.sections():
+
+            value = self.parser[section].getboolean(key)
+
+            if value is not None:
+                return value
+
+        raise KeyError(key)
+
+    def getint(self, key: str) -> int:
+        '''
+        Same as get, but returns int.
+
+        Parameters:
+            key             key to obtain from the configuration file
+
+        Returns:
+            value for the specified key
+        '''
+        for section in self.parser.sections():
+
+            value = self.parser[section].getint(key)
+
+            if value is not None:
+                return value
+
+        raise KeyError(key)
+
+    def get_rofi_options(self) -> list[str]:
+        '''
+        Return the configured rofi options as a list that can be used for
+        the subprocess module.
+
+        Parameters:
+            None
+
+        Returns:
+            list of rofi options.
+        '''
+        return list(self.parser['rofi.options'].values())
+
+    def load(path: str = None) -> Config:
+        '''
+        Create a Config object from the specified path or,
+        if None was specified, from certain default locations.
+
+        Parameters:
+            path            path of a qubes-keepass configuration file
+
+        Returns:
+            Config
+        '''
+        if path is not None:
+
+            path = Path(path)
+
+            if path.is_file():
+                return Config(path)
+
+        for path in Config.config_locations:
+            if path.is_file():
+                return Config(path)
+        
+        raise MissingConfigException('No config file found.')
+
+
 class Credential:
     '''
     Represents a credential entry present within KeePass.
@@ -152,9 +266,9 @@ class Credential:
         settings = self.parse_settings()
 
         self.qubes = parse_qube_list(settings.get('qubes'))
-        self.timeout = int(settings.get('timeout', timeout))
+        self.timeout = int(settings.get('timeout', Config.instance.get('timeout')))
 
-        if regex and self.qubes is not None:
+        if Config.instance.getboolean('regex') and self.qubes is not None:
             self.qubes = list(map(re.compile, self.qubes))
 
     def __str__(self) -> str:
@@ -254,13 +368,13 @@ class Credential:
             print(f'[-] Copy operation blocked. Selected credential is not allowed for {qube}.')
             return
 
-        if self.qubes is None:
+        if not self.qubes:
 
-            if restricted and contains_qube(restricted, qube):
+            if Config.restricted and contains_qube(Config.restricted, qube):
                 print(f'[-] Copy operation blocked. {qube} is a restricted qube.')
                 return
 
-            if unrestricted and not contains_qube(unrestricted, qube):
+            if Config.unrestricted and not contains_qube(Config.unrestricted, qube):
                 print(f'[-] Copy operation blocked. {qube} is a restricted qube.')
                 return
 
@@ -281,6 +395,9 @@ class Credential:
         process = subprocess.Popen(['qrexec-client-vm', qube, 'custom.QubesKeepass'], stdin=subprocess.PIPE)
         process.stdin.write(value)
         process.stdin.close()
+
+        qube_hash = hashlib.md5(qube.encode()).hexdigest()
+        lockfile = Path.home() / f'qubes-keepass-{qube_hash}.lock'
 
         lockfile.touch()
         timestamp = lockfile.stat().st_mtime
@@ -341,12 +458,12 @@ class CredentialCollection:
             if cred.qubes is not None and contains_qube(cred.qubes, qube):
                 filtered.append(cred)
 
-            elif cred.qubes is None:
+            elif not cred.qubes:
 
-                if unrestricted and not contains_qube(unrestricted, qube):
+                if Config.unrestricted and not contains_qube(Config.unrestricted, qube):
                     continue
 
-                elif restricted and contains_qube(restricted, qube):
+                elif Config.restricted and contains_qube(Config.restricted, qube):
                     continue
 
                 filtered.append(cred)
@@ -370,10 +487,10 @@ class CredentialCollection:
 
             folder = credential.path.parent.name or 'Root'
 
-            formatted += lcut(credential.title, title_length)
-            formatted += lcut(folder, folder_length)
-            formatted += lcut(credential.username, username_length)
-            formatted += lcut(credential.url, url_length)
+            formatted += lcut(credential.title, Config.instance.getint('title_length'))
+            formatted += lcut(folder, Config.instance.getint('folder_length'))
+            formatted += lcut(credential.username, Config.instance.getint('username_length'))
+            formatted += lcut(credential.url, Config.instance.getint('url_length'))
             formatted += '\n'
 
         return formatted
@@ -391,17 +508,17 @@ class CredentialCollection:
             Credential item selected by the user and exit code
         '''
         rofi_mesg = f'Selected credential is copied to <b>{qube}</b>\n\n'
-        rofi_mesg += lcut('Title', title_length)
-        rofi_mesg += lcut('Folder', folder_length)
-        rofi_mesg += lcut('Username', username_length)
-        rofi_mesg += lcut('URL', url_length)
+        rofi_mesg += lcut('Title', Config.instance.getint('title_length'))
+        rofi_mesg += lcut('Folder', Config.instance.getint('folder_length'))
+        rofi_mesg += lcut('Username', Config.instance.getint('username_length'))
+        rofi_mesg += lcut('URL', Config.instance.getint('url_length'))
 
-        mappings = ['-kb-custom-1', copy_password]
-        mappings += ['-kb-custom-2', copy_username]
-        mappings += ['-kb-custom-3', copy_url]
+        mappings = ['-kb-custom-1', Config.instance.get('copy_password')]
+        mappings += ['-kb-custom-2', Config.instance.get('copy_username')]
+        mappings += ['-kb-custom-3', Config.instance.get('copy_url')]
 
         print('[+] Starting rofi.')
-        process = subprocess.Popen(['rofi'] + rofi_options + ['-mesg', rofi_mesg] + mappings,
+        process = subprocess.Popen(['rofi'] + Config.instance.get_rofi_options() + ['-mesg', rofi_mesg] + mappings,
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
         try:
@@ -438,9 +555,11 @@ class CredentialCollection:
         return CredentialCollection(credentials)
 
 
-#############################################################
-##                     Main Method                         ##
-#############################################################
+parser = argparse.ArgumentParser(description='''qubes-keepass v1.0.0 - A rofi based KeePassXC frontend for Qubes''')
+parser.add_argument('qube', help='qube to copy the credential to')
+parser.add_argument('--config', help='path to the configuration file')
+
+
 def main() -> None:
     '''
     Main function. Ask the user for a credential to copy and copy it into
@@ -454,7 +573,18 @@ def main() -> None:
     '''
     args = parser.parse_args()
 
-    if restricted and unrestricted:
+    try:
+        Config.load(args.config)
+
+    except MissingConfigException:
+        print('[-] Unable to find the qubes-keepass.ini configuration file.')
+        return
+
+    except KeyError as e:
+        print(f'[-] Missing required key {str(e)} in configuration file.')
+        return
+
+    if Config.restricted and Config.unrestricted:
         print("[-] The configuration options 'restricted' and 'unrestricted' are mutually exclusive.")
         print('[-] Configure only one of them and leave the other empty to continue.')
         return
@@ -468,9 +598,9 @@ def main() -> None:
         return
 
     try:
-        if regex:
+        if Config.instance.getboolean('regex'):
 
-            for lst in [restricted, unrestricted]:
+            for lst in [Config.restricted, Config.unrestricted]:
                 compiled = list(map(re.compile, lst))
                 lst.clear()
                 lst += compiled
@@ -478,14 +608,17 @@ def main() -> None:
         collection = CredentialCollection.load(service)
         collection.filter_credentials(args.qube)
 
+        attr, credential = collection.display_rofi(args.qube)
+        credential.copy_to_qube(attr, args.qube)
+
+    except KeyError as e:
+        print(f'[-] Missing required key {str(e)} in configuration file.')
+        return
+
     except re.error as e:
         print('[-] Regex error. Encountered an invalid regular expression.')
         print('[-] Error message: ' + str(e))
         return
-
-    try:
-        attr, credential = collection.display_rofi(args.qube)
-        credential.copy_to_qube(attr, args.qube)
 
     except RofiAbortedException:
         print('[+] Aborted.')

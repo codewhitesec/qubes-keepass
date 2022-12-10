@@ -87,7 +87,8 @@ specific database security settings. If you simply want to use your complete dat
 
 Finally, copy the [qubes-keepass.py](./qubes-keepass.py) script to your `vault` VM and make sure it is executable. Also make
 sure that the location specified in [qubes-keepass-dom0.sh](./qubes-keepass-dom0.sh) matches the location you copied the script
-to (default is `/home/user/.local/bin/qubes-keepass.py`).
+to (default is `/home/user/.local/bin/qubes-keepass.py`). Also the configuration file [qubes-keepass.ini](./qubes-keepass.ini)
+needs to be copied to your `vault` VM. A good location for this one is `/home/user/.config/qubes-keepass.ini`.
 
 
 #### app-vm
@@ -120,14 +121,23 @@ Within *rofi* you can press the following keys to copy different attributes of t
 * `Ctrl+b`: Copy username
 * `Ctrl+Shift+u`: Copy URL
 
+All of those can be configured using the *qubes-keepass* [configuration-file](/qubes-keepass.ini).
+
 
 ### Configuration
 
 ----
 
-*qubes-keepass* is mainly configured directly inside the `qubes-keepass.py` script. In the beginning of the script, you can find
-some global variables that can be adjusted to your preferences. This includes the *rofi* keybindings, the default timeout when
-credentials get cleared and a list of restricted Qubes (this is explained next).
+*qubes-keepass* accepts configuration options from two different places. Global options that affect the behavior of *qubes-keepass*
+itself can be specified within the `qubes-keepass.ini` configuration file. During startup, such a configuration file is searched in
+the following locations:
+
+* ~/.config/qubes-keepass.ini
+* ~/.config/qubes-keepass/config.ini
+* ~/.config/qubes-keepass/qubes-keepass.ini
+* /etc/qubes-keepass.ini
+* /etc/qubes-keepass/config.ini
+* /etc/qubes-keepass/qubes-keepass.ini
 
 Moreover, *qubes-keepass* also supports some credential specific configurations, that can be applied within the *Notes* section
 of a *KeePassXC* credential. The following listing shows an example for such a configuration:
@@ -138,24 +148,26 @@ qubes = work, personal
 timeout = 5
 ```
 
-The `timeout` key specifies a credential specific timeout for the credential. The `qubes` key specifies an allow list of qubes for
-the credential. In the example above, the credential will only be listed when you are currently copying into the `work` or `personal`
-Qube. When copying in other Qubes, the credential is not shown and not allowed to be copied. If you want to hide a credential from
-*qubes-keepass*, just restrict it to a non existing Qube name like `qubes = None`.
+#### Credential Specific Options
 
-You can also restrict a Qube to only use credentials that are explicitly defined for this Qube. Just add the desired Qubes to the
-`restricted` variable within `qubes-keepass.py`. When copying to these Qubes, only credentials are displayed that have the corresponding
-Qube name explicitly configured in their `QubesKeepass` section.
+* `timeout` - specifies a credential specific timeout before the clipboard gets cleared after the credential was copied.
+* `qubes` - specifies an allow list of qubes for the credential. The credential can only be copied into the specified qubes.
 
-The `unrestricted` option in `qubes-keepass.py` is mutually exclusive to `restricted` and does exactly the opposite. When configuring Qube
-names for this option, all other Qubes except the specified one are treated as *restricted*.
 
-When `regex` in `qubes-keepass.py` is set to true, all Qube name definitions are treated as regular expressions. This affects all definitions
-within the `restricted` and `unrestricted` parameter as well as all Qube definitions within *KeePass* credentials.
+#### Global Options
+
+* `regex` - treat specified qube names like regular expressions. This also applies to credential specific options
+* `timeout` - default timeout the clipboard gets cleared after a credential was copied
+* `restricted` - qubes listed in this configuration can only obtain credentials that are explicitly configured for them
+* `unrestricted` - when this configuration is not empty, all other qubes are treated as listed as restricted
+
+
+#### Theme
 
 If you want to setup the custom theme displayed within this README file, just copy the [qubes-keepass.rasi](/theme/qubes-keepass.rasi) theme
-and the associated [background image](/theme/background.png) to your `~/.config/rofi` folder and add `-theme qubes-keepass` to the `rofi_options`
-variable in `qubes-keepass.py`.
+and the associated [background image](/theme/background.png) to your `~/.config/rofi` folder and add `-theme qubes-keepass` to the `rofi.options`
+section in your `qubes-keepass.ini`
+
 
 ### FAQ
 
