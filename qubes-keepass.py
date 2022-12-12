@@ -101,8 +101,7 @@ class Config:
     '''
     Class for parsing the qubes-keepass configuration file.
     '''
-
-    instance = None
+    parser = None
     restricted = []
     unrestricted = []
 
@@ -115,26 +114,18 @@ class Config:
                          Path('/etc/qubes-keepass/qubes-keepass.ini'),
                        ]
 
-    def __init__(self, path: Path) -> None:
-        '''
-        Initialize the configuration from the path of the configuration
-        file.
+    default_trust_order = [
+                             'red',
+                             'orange',
+                             'yellow',
+                             'green',
+                             'gray',
+                             'blue',
+                             'purple',
+                             'black',
+                          ]
 
-        Parameters:
-            path            path of the qubes-keepass configuration file
-
-        Returns:
-            None
-        '''
-        self.parser = configparser.ConfigParser()
-        self.parser.read(path)
-
-        Config.restricted = parse_qube_list(self.get('restricted'))
-        Config.unrestricted = parse_qube_list(self.get('unrestricted'))
-
-        Config.instance = self
-
-    def get(self, key: str) -> str:
+    def get(key: str) -> str:
         '''
         Get the specified key from the configuration file. Currently, only
         unique keys are present and sections are only used for formatting.
@@ -146,9 +137,9 @@ class Config:
         Returns:
             value for the specified key
         '''
-        for section in self.parser.sections():
+        for section in Config.parser.sections():
 
-            value = self.parser[section].get(key)
+            value = Config.parser[section].get(key)
 
             if value is not None:
 
@@ -159,7 +150,7 @@ class Config:
 
         raise KeyError(key)
 
-    def getboolean(self, key: str) -> bool:
+    def getboolean(key: str) -> bool:
         '''
         Same as get, but returns bool.
 
@@ -169,16 +160,16 @@ class Config:
         Returns:
             value for the specified key
         '''
-        for section in self.parser.sections():
+        for section in Config.parser.sections():
 
-            value = self.parser[section].getboolean(key)
+            value = Config.parser[section].getboolean(key)
 
             if value is not None:
                 return value
 
         raise KeyError(key)
 
-    def getint(self, key: str) -> int:
+    def getint(key: str) -> int:
         '''
         Same as get, but returns int.
 
@@ -188,16 +179,16 @@ class Config:
         Returns:
             value for the specified key
         '''
-        for section in self.parser.sections():
+        for section in Config.parser.sections():
 
-            value = self.parser[section].getint(key)
+            value = Config.parser[section].getint(key)
 
             if value is not None:
                 return value
 
         raise KeyError(key)
 
-    def get_rofi_options(self) -> list[str]:
+    def get_rofi_options() -> list[str]:
         '''
         Return the configured rofi options as a list that can be used for
         the subprocess module.
@@ -208,7 +199,50 @@ class Config:
         Returns:
             list of rofi options.
         '''
-        return list(self.parser['rofi.options'].values())
+        return list(Config.parser['rofi.options'].values())
+
+    def translate_trust(trust_level: int) -> int:
+        '''
+        Translates the qubes specific numerical trust value to a user defined
+        trust value according to the configuration file.
+
+        Parameters:
+            trust_level         the numerical trust level to translate
+
+        Returns:
+            numerical trust level according to the user configuration
+        '''
+        try:
+            color_value = Config.default_trust_order[trust_level - 1]
+            return Config.getint(f'trust_level_{color_value}')
+
+        except (IndexError, KeyError):
+            return 0
+
+    def is_trusted(trust_level: int, threshold: int) -> bool:
+        '''
+        Checks whether the specified trust level is considered trusted using
+        the given threshold. This function could be trivial when just taking
+        the qubes predefined ordering of trust levels. However, users may use
+        their own ordering that can be configured within the configuration
+        file.
+
+        Parameters:
+            trust_level         the trust level to check against the threshold
+            threshold           the threshould
+
+        Returns:
+            True if the specified trust level is considered trusted
+        '''
+        if trust_level is None:
+            return True
+
+        translated_trust = Config.translate_trust(trust_level)
+
+        if translated_trust >= threshold:
+            return True
+
+        return False
 
     def load(path: str = None) -> Config:
         '''
@@ -222,17 +256,24 @@ class Config:
             Config
         '''
         if path is not None:
+            config_path = Path(path)
 
-            path = Path(path)
+        else:
 
-            if path.is_file():
-                return Config(path)
+            for path in Config.config_locations:
 
-        for path in Config.config_locations:
-            if path.is_file():
-                return Config(path)
+                if path.is_file():
+                    config_file = path
+                    break
         
-        raise MissingConfigException('No config file found.')
+        if not config_file.is_file():
+            raise MissingConfigException('No config file found.')
+
+        Config.parser = configparser.ConfigParser()
+        Config.parser.read(config_file)
+
+        Config.restricted = parse_qube_list(Config.get('restricted'))
+        Config.unrestricted = parse_qube_list(Config.get('unrestricted'))
 
 
 class Credential:
@@ -266,9 +307,10 @@ class Credential:
         settings = self.parse_settings()
 
         self.qubes = parse_qube_list(settings.get('qubes'))
-        self.timeout = int(settings.get('timeout', Config.instance.get('timeout')))
+        self.trust = int(settings.get('trust', 0))
+        self.timeout = int(settings.get('timeout', Config.get('timeout')))
 
-        if Config.instance.getboolean('regex') and self.qubes is not None:
+        if Config.getboolean('regex') and self.qubes is not None:
             self.qubes = list(map(re.compile, self.qubes))
 
     def __str__(self) -> str:
@@ -347,7 +389,7 @@ class Credential:
         self.item.load_secret_sync()
         return self.item.get_secret().get_text()
 
-    def copy_to_qube(self, attribute: int, qube: str) -> None:
+    def copy_to_qube(self, attribute: int, qube: str, trust_level: int) -> None:
         '''
         Copy the specified attribute to the specified qube. If the credential
         has a dedicated qube assigned, the operation might fail when a different
@@ -360,10 +402,17 @@ class Credential:
         Parameters:
             attribute       the Credential attribute to copy
             qube            the qube to copy the credential to
+            trust_level     the trust level of the target qube
 
         Returns:
             None
         '''
+        if self.trust and not Config.is_trusted(trust_level, self.trust):
+            return
+
+        if not Config.is_trusted(trust_level, Config.getint('minimum_trust')):
+            return
+
         if self.qubes is not None and not contains_qube(self.qubes, qube):
             print(f'[-] Copy operation blocked. Selected credential is not allowed for {qube}.')
             return
@@ -438,7 +487,7 @@ class CredentialCollection:
         '''
         self.credentials = sorted(credentials, key=lambda x: x.path.parent)
 
-    def filter_credentials(self, qube: str) -> None:
+    def filter_credentials(self, qube: str, trust_level: int) -> None:
         '''
         Filter the list of credentials for the specified qube. Filtered
         credentials include all credentials with a matching qube name
@@ -447,6 +496,7 @@ class CredentialCollection:
 
         Parameters:
             qube                 qube to filter for
+            trust_level          trust level of the qube
 
         Returns:
             None
@@ -454,6 +504,12 @@ class CredentialCollection:
         filtered = []
 
         for cred in self.credentials:
+
+            if cred.trust and not Config.is_trusted(trust_level, cred.trust):
+                continue
+
+            if not Config.is_trusted(trust_level, Config.getint('minimum_trust')):
+                continue
 
             if cred.qubes is not None and contains_qube(cred.qubes, qube):
                 filtered.append(cred)
@@ -487,10 +543,10 @@ class CredentialCollection:
 
             folder = credential.path.parent.name or 'Root'
 
-            formatted += lcut(credential.title, Config.instance.getint('title_length'))
-            formatted += lcut(folder, Config.instance.getint('folder_length'))
-            formatted += lcut(credential.username, Config.instance.getint('username_length'))
-            formatted += lcut(credential.url, Config.instance.getint('url_length'))
+            formatted += lcut(credential.title, Config.getint('title_length'))
+            formatted += lcut(folder, Config.getint('folder_length'))
+            formatted += lcut(credential.username, Config.getint('username_length'))
+            formatted += lcut(credential.url, Config.getint('url_length'))
             formatted += '\n'
 
         return formatted
@@ -508,17 +564,17 @@ class CredentialCollection:
             Credential item selected by the user and exit code
         '''
         rofi_mesg = f'Selected credential is copied to <b>{qube}</b>\n\n'
-        rofi_mesg += lcut('Title', Config.instance.getint('title_length'))
-        rofi_mesg += lcut('Folder', Config.instance.getint('folder_length'))
-        rofi_mesg += lcut('Username', Config.instance.getint('username_length'))
-        rofi_mesg += lcut('URL', Config.instance.getint('url_length'))
+        rofi_mesg += lcut('Title', Config.getint('title_length'))
+        rofi_mesg += lcut('Folder', Config.getint('folder_length'))
+        rofi_mesg += lcut('Username', Config.getint('username_length'))
+        rofi_mesg += lcut('URL', Config.getint('url_length'))
 
-        mappings = ['-kb-custom-1', Config.instance.get('copy_password')]
-        mappings += ['-kb-custom-2', Config.instance.get('copy_username')]
-        mappings += ['-kb-custom-3', Config.instance.get('copy_url')]
+        mappings = ['-kb-custom-1', Config.get('copy_password')]
+        mappings += ['-kb-custom-2', Config.get('copy_username')]
+        mappings += ['-kb-custom-3', Config.get('copy_url')]
 
         print('[+] Starting rofi.')
-        process = subprocess.Popen(['rofi'] + Config.instance.get_rofi_options() + ['-mesg', rofi_mesg] + mappings,
+        process = subprocess.Popen(['rofi'] + Config.get_rofi_options() + ['-mesg', rofi_mesg] + mappings,
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
         try:
@@ -557,6 +613,7 @@ class CredentialCollection:
 
 parser = argparse.ArgumentParser(description='''qubes-keepass v1.0.0 - A rofi based KeePassXC frontend for Qubes''')
 parser.add_argument('qube', help='qube to copy the credential to')
+parser.add_argument('--trust-level', type=int, help='numerical trust level of the qube')
 parser.add_argument('--config', help='path to the configuration file')
 
 
@@ -598,7 +655,7 @@ def main() -> None:
         return
 
     try:
-        if Config.instance.getboolean('regex'):
+        if Config.getboolean('regex'):
 
             for lst in [Config.restricted, Config.unrestricted]:
                 compiled = list(map(re.compile, lst))
@@ -606,10 +663,10 @@ def main() -> None:
                 lst += compiled
 
         collection = CredentialCollection.load(service)
-        collection.filter_credentials(args.qube)
+        collection.filter_credentials(args.qube, args.trust_level)
 
         attr, credential = collection.display_rofi(args.qube)
-        credential.copy_to_qube(attr, args.qube)
+        credential.copy_to_qube(attr, args.qube, args.trust_level)
 
     except KeyError as e:
         print(f'[-] Missing required key {str(e)} in configuration file.')
