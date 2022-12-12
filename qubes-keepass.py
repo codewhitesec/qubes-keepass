@@ -413,7 +413,7 @@ class Credential:
         if not Config.is_trusted(trust_level, Config.getint('minimum_trust')):
             return
 
-        if self.qubes is not None and not contains_qube(self.qubes, qube):
+        if self.qubes and not contains_qube(self.qubes, qube):
             print(f'[-] Copy operation blocked. Selected credential is not allowed for {qube}.')
             return
 
@@ -511,7 +511,7 @@ class CredentialCollection:
             if not Config.is_trusted(trust_level, Config.getint('minimum_trust')):
                 continue
 
-            if cred.qubes is not None and contains_qube(cred.qubes, qube):
+            if cred.qubes and contains_qube(cred.qubes, qube):
                 filtered.append(cred)
 
             elif not cred.qubes:
