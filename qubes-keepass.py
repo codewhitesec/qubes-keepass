@@ -633,7 +633,7 @@ class Credential:
         process.stdin.close()
 
         qube_hash = hashlib.md5(qube.encode()).hexdigest()
-        lockfile = Path.home() / f'qubes-keepass-{qube_hash}.lock'
+        lockfile = Path.home() / f'.qubes-keepass-{qube_hash}.lock'
 
         lockfile.touch()
         timestamp = lockfile.stat().st_mtime
