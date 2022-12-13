@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import time
+import time
 import hashlib
 import argparse
 import subprocess
@@ -97,6 +98,177 @@ class MissingConfigException(Exception):
     '''
 
 
+class UuidCache:
+    '''
+    The UuidCache class is responsible for tracking which credentials were used most
+    frequently. When smart_ordering is enabled, the most used credentials are displayed
+    first. Moreover, a credential used within the last 30sec will always displayed first.
+    '''
+
+    def __init__(self, data: list[tuple]) -> None:
+        '''
+        Initialize the uuid cache object with a list of cached credentials. Each cached
+        credential is represented by a tuple of (sha256(uuid), usage-count, usage-time).
+
+        Parameters:
+            data            cached credential data
+
+        Returns:
+            None
+        '''
+        self.cached = []
+        self.usage_data = {}
+        self.timestamps = {}
+
+        for tup in data:
+
+            self.cached.append(tup[0])
+            self.usage_data[tup[0]] = int(tup[1])
+            self.timestamps[tup[0]] = int(tup[2])
+
+    def put(self, cred: Credential, qube: str) -> None:
+        '''
+        Put a new Credential into the cache.
+
+        Parameters:
+            cred            the credential to put in
+            qube            name of the qube the credential was used
+
+        Returns:
+            None
+        '''
+        uuid_hash = cred.uuid_hash(qube)
+
+        if uuid_hash not in self.cached:
+            self.cached.append(uuid_hash)
+            self.usage_data[uuid_hash] = 1
+
+        else:
+            self.usage_data[uuid_hash] += 1
+
+        self.timestamps[uuid_hash] = int(time.time())
+
+    def write(self, path: Path) -> None:
+        '''
+        Write the uuid cache to the specified location. Make sure that the data
+        is written in the correct order according to the usage count.
+
+        Parameters:
+            path            path to the cache file
+
+        Returns:
+            None
+        '''
+        data = []
+
+        for uuid_hash in self.cached:
+            data.append((uuid_hash, self.usage_data[uuid_hash], self.timestamps[uuid_hash]))
+
+        data.sort(key=lambda x: x[1], reverse=True)
+
+        with open(path, 'w') as cache_file:
+
+            for item in data:
+                cache_file.write(f'{item[0]}:')
+                cache_file.write(f'{item[1]}:')
+                cache_file.write(f'{item[2]}\n')
+
+    def get_last(self) -> str:
+        '''
+        If a credential was used within the last 30 seconds, return its uuid.
+        If no credential was used within the last 30 seconds, return an empty
+        string.
+
+        Parameters:
+            None
+
+        Returns:
+            uuid of last used credentials within 30 seconds or empty string
+        '''
+        if not self.cached:
+            return ''
+
+        best = self.cached[0]
+
+        for uuid_hash in self.cached:
+
+            if self.timestamps[uuid_hash] > self.timestamps[best]:
+                best = uuid_hash
+
+        if (int(time.time()) - self.timestamps[uuid_hash]) <= 30:
+            return uuid_hash
+
+        return ''
+
+    def sort(self, cred_list: list[Credential], qube: str) -> None:
+        '''
+        Order a list of credentials according to their usage count. This function
+        uses the fact that the UuidCache is sorted before it is written to disk.
+        The uuids stored in self.cached are therefore in the correct order.
+
+        Parameters:
+            cred_list           list of credentials to be ordered
+            qube                currently focused qube name
+
+        Returns:
+            None
+        '''
+        if not Config.getboolean('smart_sort'):
+            return
+
+        cred_dict = {}
+        copy_list = list(cred_list)
+        cred_list.clear()
+
+        for cred in copy_list:
+            cred_dict[cred.uuid_hash(qube)] = cred
+
+        last_uuid = self.get_last()
+        last_used = cred_dict.get(last_uuid)
+
+        if last_used is not None:
+            cred_list.append(last_used)
+            copy_list.remove(last_used)
+            cred_dict[last_uuid] = None
+
+        for uuid in self.cached:
+
+            cred = cred_dict.get(uuid)
+
+            if cred is not None:
+                cred_list.append(cred)
+                copy_list.remove(cred)
+
+        cred_list += copy_list
+
+    def load(path: Path) -> UuidCache:
+        '''
+        Initialize the UuidCache from the specified cache file.
+
+        Parameters:
+            path            path to the cache file
+
+        Returns:
+            UuidCache object
+        '''
+        cached_data = []
+
+        if path.is_file():
+
+            text = path.read_text()
+            for line in text.split('\n'):
+
+                try:
+                    uuid_hash, usage_count, access_time = line.split(':', 3)
+                    cached_data.append((uuid_hash, usage_count, access_time))
+
+                except ValueError:
+                    continue
+
+            cached_data.sort(key=lambda x: x[1], reverse=True)
+
+        return UuidCache(cached_data)
+
 class Config:
     '''
     Class for parsing the qubes-keepass configuration file.
@@ -152,7 +324,8 @@ class Config:
 
     def getboolean(key: str) -> bool:
         '''
-        Same as get, but returns bool.
+        Same as get, but returns bool. Does not raise KeyError if a key does not
+        exist. False is assumed in this case.
 
         Parameters:
             key             key to obtain from the configuration file
@@ -167,7 +340,8 @@ class Config:
             if value is not None:
                 return value
 
-        raise KeyError(key)
+            else:
+                return False
 
     def getint(key: str) -> int:
         '''
@@ -265,7 +439,7 @@ class Config:
                 if path.is_file():
                     config_file = path
                     break
-        
+
         if not config_file.is_file():
             raise MissingConfigException('No config file found.')
 
@@ -340,6 +514,19 @@ class Credential:
             return False
 
         return self.uuid == other.uuid
+
+    def uuid_hash(self, qube: str) -> str:
+        '''
+        Create a sha256 hash over the credential Uuid and the specified
+        qube name.
+
+        Parameters:
+            qube            qube name for the hash
+
+        Returns:
+            sha256 hash
+        '''
+        return hashlib.sha256(f'{qube}-{self.uuid}'.encode()).hexdigest()
 
     def parse_settings(self) -> dict():
         '''
@@ -662,11 +849,19 @@ def main() -> None:
                 lst.clear()
                 lst += compiled
 
+        cache_path = Path.home() / '.qubes-keepass.cache'
+        uuid_cache = UuidCache.load(cache_path)
+
         collection = CredentialCollection.load(service)
+        uuid_cache.sort(collection.credentials, args.qube)
+
         collection.filter_credentials(args.qube, args.trust_level)
 
         attr, credential = collection.display_rofi(args.qube)
         credential.copy_to_qube(attr, args.qube, args.trust_level)
+
+        uuid_cache.put(credential, args.qube)
+        uuid_cache.write(cache_path)
 
     except KeyError as e:
         print(f'[-] Missing required key {str(e)} in configuration file.')

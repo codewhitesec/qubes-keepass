@@ -160,6 +160,7 @@ trust = 4
 
 * `regex` - treat specified qube names like regular expressions. This also applies to credential specific options
 * `timeout` - default timeout the clipboard gets cleared after a credential was copied
+* `smart_sort` - sort credentials by their usage count. A Credential accessed within the last 30 seconds is always displayed first
 * `restricted` - qubes listed in this configuration can only obtain credentials that are explicitly configured for them
 * `unrestricted` - when this configuration is not empty, all other qubes are treated as listed as restricted
 * `minimum_trust` - only qubes with a trust level above the specified value are able to obtain credentials via *qubes-keepass*
