@@ -146,12 +146,14 @@ of a *KeePassXC* credential. The following listing shows an example for such a c
 [QubesKeepass]
 qubes = work, personal
 timeout = 5
+trust = 4
 ```
 
 #### Credential Specific Options
 
 * `timeout` - specifies a credential specific timeout before the clipboard gets cleared after the credential was copied.
 * `qubes` - specifies an allow list of qubes for the credential. The credential can only be copied into the specified qubes.
+* `trust` - specifies the minimum trust level that a qube needs to be able to receive this credential
 
 
 #### Global Options
@@ -160,7 +162,23 @@ timeout = 5
 * `timeout` - default timeout the clipboard gets cleared after a credential was copied
 * `restricted` - qubes listed in this configuration can only obtain credentials that are explicitly configured for them
 * `unrestricted` - when this configuration is not empty, all other qubes are treated as listed as restricted
+* `minimum_trust` - only qubes with a trust level above the specified value are able to obtain credentials via *qubes-keepass*
 
+When using the `minimum_trust` option, *qubes-keepass* uses the default numerical values of the Qubes OS trust levels:
+
+| Label  | Trust Level |
+| ------ | ----------- |
+| red    | 1           |
+| orange | 2           |
+| yellow | 3           |
+| green  | 4           |
+| gray   | 5           |
+| blue   | 6           |
+| purple | 7           |
+| black  | 8           |
+
+When using your own ordering (e.g. treating `red` as fully trusted), you can assign different trust levels within the
+`qubes-keepass.ini` file.
 
 #### Theme
 
