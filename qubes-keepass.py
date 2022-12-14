@@ -856,12 +856,12 @@ def main() -> None:
         uuid_cache.sort(collection.credentials, args.qube)
 
         collection.filter_credentials(args.qube, args.trust_level)
-
         attr, credential = collection.display_rofi(args.qube)
-        credential.copy_to_qube(attr, args.qube, args.trust_level)
 
         uuid_cache.put(credential, args.qube)
         uuid_cache.write(cache_path)
+
+        credential.copy_to_qube(attr, args.qube, args.trust_level)
 
     except KeyError as e:
         print(f'[-] Missing required key {str(e)} in configuration file.')
