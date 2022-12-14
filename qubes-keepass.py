@@ -481,8 +481,11 @@ class Credential:
         settings = self.parse_settings()
 
         self.qubes = parse_qube_list(settings.get('qubes'))
-        self.trust = int(settings.get('trust', 0))
+        self.trust = settings.get('trust', None)
         self.timeout = int(settings.get('timeout', Config.get('timeout')))
+
+        if self.trust is not None:
+            self.trust = int(self.trust)
 
         if Config.getboolean('regex') and self.qubes is not None:
             self.qubes = list(map(re.compile, self.qubes))
@@ -594,10 +597,8 @@ class Credential:
         Returns:
             None
         '''
-        if self.trust and not Config.is_trusted(trust_level, self.trust):
-            return
-
-        if not Config.is_trusted(trust_level, Config.getint('minimum_trust')):
+        if self.trust is not None and not Config.is_trusted(trust_level, self.trust):
+            print(f'[-] Copy operation blocked. {qube} is not trusted.')
             return
 
         if self.qubes and not contains_qube(self.qubes, qube):
@@ -605,6 +606,10 @@ class Credential:
             return
 
         if not self.qubes:
+
+            if self.trust is None and not Config.is_trusted(trust_level, Config.getint('minimum_trust')):
+                print(f'[-] Copy operation blocked. {qube} is not trusted.')
+                return
 
             if Config.restricted and contains_qube(Config.restricted, qube):
                 print(f'[-] Copy operation blocked. {qube} is a restricted qube.')
@@ -692,16 +697,16 @@ class CredentialCollection:
 
         for cred in self.credentials:
 
-            if cred.trust and not Config.is_trusted(trust_level, cred.trust):
-                continue
-
-            if not Config.is_trusted(trust_level, Config.getint('minimum_trust')):
+            if cred.trust is not None and not Config.is_trusted(trust_level, cred.trust):
                 continue
 
             if cred.qubes and contains_qube(cred.qubes, qube):
                 filtered.append(cred)
 
             elif not cred.qubes:
+
+                if cred.trust is None and not Config.is_trusted(trust_level, Config.getint('minimum_trust')):
+                    continue
 
                 if Config.unrestricted and not contains_qube(Config.unrestricted, qube):
                     continue
