@@ -151,9 +151,10 @@ trust = 4
 
 #### Credential Specific Options
 
-* `timeout` - specifies a credential specific timeout before the clipboard gets cleared after the credential was copied.
-* `qubes` - specifies an allow list of qubes for the credential. The credential can only be copied into the specified qubes.
+* `timeout` - specifies a credential specific timeout before the clipboard gets cleared after the credential was copied
+* `qubes` - specifies an allow list of qubes for the credential. The credential can only be copied into the specified qubes
 * `trust` - specifies the minimum trust level that a qube needs to be able to receive this credential
+* `meta` - specifies a list of qubes that are only allowed to obtain meta information of the credential (username, url)
 
 
 #### Global Options

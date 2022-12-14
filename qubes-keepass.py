@@ -480,6 +480,7 @@ class Credential:
 
         settings = self.parse_settings()
 
+        self.meta = parse_qube_list(settings.get('meta'))
         self.qubes = parse_qube_list(settings.get('qubes'))
         self.trust = settings.get('trust', None)
         self.timeout = int(settings.get('timeout', Config.get('timeout')))
@@ -622,6 +623,11 @@ class Credential:
         value = ''
 
         if attribute == 0 or attribute == 10:
+
+            if self.meta and contains_qube(self.meta, qube):
+                print(f'[-] Copy operation blocked. {qube} is not allowed to obtain passwords.')
+                return
+
             print(f'[+] Copying password of credential {self.title} to {qube}.')
             value = self.get_secret().encode()
 
