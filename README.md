@@ -4,7 +4,7 @@
 
 *qubes-keepass* is a [rofi](https://github.com/davatorium/rofi) based frontend for [KeePassXC](https://keepassxc.org/)
 which integrates nicely with the isolation and security features of [Qubes OS](https://www.qubes-os.org/). It enables you
-to easily copy credentials to currently focused Qube, to define allow lists for credentials based on Qube names and to
+to easily copy credentials to the currently focused Qube, to define allow lists for credentials based on Qube names and to
 automatically clear the Qubes clipboard after a configurable amount of time.
 
 ![qubes-keepass](https://user-images.githubusercontent.com/49147108/206440037-cf2108f8-8033-4574-bdbe-88f7943c1457.png)
@@ -36,7 +36,7 @@ vault $anyvm allow notify=true
 According to your preferences, you could also choose `ask` instead of the `allow` action or remove the `notify=true` option,
 if you do not want to be notified when something gets copied via *qubes-keepass*.
 
-If you're using Qubes 4.1 and want to follow the new Qrexec policy system:
+If you're using Qubes 4.1 and want to follow the new *qrexec* policy system:
 
 ```console
 [user@dom0 ~]$ cat /etc/qubes/policy.d/30-user.policy
@@ -70,20 +70,24 @@ by modifying it's autostart entry. First, setup a [binddir](https://www.qubes-os
 binds+=( '/etc/xdg/autostart/gnome-keyring-secrets.desktop' )
 ```
 
-Now restart the `vault` VM and add `Hidden=true` to the `/etc/xdg/autostart/gnome-keyring-secrets.desktop` file:
+Now restart the `vault` VM and add `Hidden=true` to the `/etc/xdg/autostart/gnome-keyring-secrets.desktop` file and comment
+the line containing the `Exec` statement. According to the [documentation](https://specifications.freedesktop.org/autostart-spec/autostart-spec-latest.html)
+creating a file `~/.config/autostart/gnome-keyring-secrets.desktop` with contents `Hidden=true` would also be sufficient, but
+this did not work during our tests.
 
 ```console
 [user@vault ~]$ cat /etc/xdg/autostart/gnome-keyring-secrets.desktop
 ...
+#Exec=/usr/bin/gnome-keyring-daemon --start --components=secrets
 Hidden=true
 ```
 
 After restarting the `vault` VM again, the `gnome-keyring-daemon` should no longer start up and you can enable the *Secret
 Service* integration in the *KeePassXC* Tools settings.
 
-Additionally, you need to expose the credentials you want to use with *qubes-keepass* to the *Secret Service* within your
-specific database security settings. If you simply want to use your complete database with *qubes-keepass*, just select the your
-*Root* folder.
+Additionally, you need to expose the credentials you want to use with *qubes-keepass* to the *Secret Service* within the
+database specific security settings. If you simply want to use your entire database with *qubes-keepass*, allow access
+to the *Root* folder of your database.
 
 Finally, copy the [qubes-keepass.py](./qubes-keepass.py) script to your `vault` VM and make sure it is executable. Also make
 sure that the location specified in [qubes-keepass-dom0.sh](./qubes-keepass-dom0.sh) matches the location you copied the script
@@ -103,7 +107,7 @@ is essentially just a pipe to `xclip` and looks like this:
 xclip -selection clipboard
 ```
 
-Make sure that is executable and that such a file exists on each *AppVM* you want to use *qubes-keepass* with. As the *qrexec*
+Make sure that it is executable and that such a file exists on each *AppVM* you want to use *qubes-keepass* with. As the *qrexec*
 service is defined outside the persistent portions of an *AppVM*, you probably want to set it up within the *AppVMs* template.
 
 
@@ -161,9 +165,9 @@ trust = 4
 
 * `regex` - treat specified qube names like regular expressions. This also applies to credential specific options
 * `timeout` - default timeout the clipboard gets cleared after a credential was copied
-* `smart_sort` - sort credentials by their usage count. A Credential accessed within the last 30 seconds is always displayed first
+* `smart_sort` - sort credentials by their usage count. A credential accessed within the last 30 seconds is always displayed first
 * `restricted` - qubes listed in this configuration can only obtain credentials that are explicitly configured for them
-* `unrestricted` - when this configuration is not empty, all other qubes are treated as listed as restricted
+* `unrestricted` - when this configuration is not empty, all other qubes are treated as restricted
 * `minimum_trust` - only qubes with a trust level above the specified value are able to obtain credentials via *qubes-keepass*
 
 When using the `minimum_trust` option, *qubes-keepass* uses the default numerical values of the Qubes OS trust levels:
