@@ -66,7 +66,7 @@ the database settings and requires that no other *Secret Service Providers* is r
 by modifying it's autostart entry. First, setup a [binddir](https://www.qubes-os.org/doc/bind-dirs/) for your `vault` VM:
 
 ```console
-[user@vault ~]$ cat rw/config/qubes-bind-dirs.d/50_user.conf
+[user@vault ~]$ cat /rw/config/qubes-bind-dirs.d/50_user.conf
 binds+=( '/etc/xdg/autostart/gnome-keyring-secrets.desktop' )
 ```
 
