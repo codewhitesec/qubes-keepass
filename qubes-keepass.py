@@ -123,8 +123,8 @@ class UuidCache:
         for tup in data:
 
             self.cached.append(tup[0])
-            self.usage_data[tup[0]] = int(tup[1])
-            self.timestamps[tup[0]] = int(tup[2])
+            self.usage_data[tup[0]] = tup[1]
+            self.timestamps[tup[0]] = tup[2]
 
     def put(self, cred: Credential, qube: str) -> None:
         '''
@@ -260,7 +260,7 @@ class UuidCache:
 
                 try:
                     uuid_hash, usage_count, access_time = line.split(':', 3)
-                    cached_data.append((uuid_hash, usage_count, access_time))
+                    cached_data.append((uuid_hash, int(usage_count), int(access_time)))
 
                 except ValueError:
                     continue
