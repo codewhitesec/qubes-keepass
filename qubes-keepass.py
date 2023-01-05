@@ -77,11 +77,18 @@ def contains_qube(qube_list: list, qube: str) -> bool:
 
     for entry in qube_list:
 
-        if type(entry) == str and entry == qube:
-            return True
+        if type(entry) == str:
 
-        elif entry.fullmatch(qube):
-            return True
+            if entry == qube:
+                return True
+
+        elif type(entry) == re.Pattern:
+
+            if entry.fullmatch(qube):
+                return True
+
+        else:
+            raise InternalError(f'Unsupported list entry type: {type(entry)}')
 
     return False
 
@@ -93,6 +100,12 @@ class RofiAbortedException(Exception):
 
 
 class MissingConfigException(Exception):
+    '''
+    Custom exception class.
+    '''
+
+
+class InternalError(Exception):
     '''
     Custom exception class.
     '''
@@ -490,6 +503,7 @@ class Credential:
 
         if Config.getboolean('regex') and self.qubes is not None:
             self.qubes = list(map(re.compile, self.qubes))
+            self.meta = list(map(re.compile, self.meta))
 
     def __str__(self) -> str:
         '''
@@ -880,6 +894,11 @@ def main() -> None:
 
     except re.error as e:
         print('[-] Regex error. Encountered an invalid regular expression.')
+        print('[-] Error message: ' + str(e))
+        return
+
+    except InternalError as e:
+        print('[-] Internal Error.')
         print('[-] Error message: ' + str(e))
         return
 
