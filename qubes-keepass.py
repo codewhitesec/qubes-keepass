@@ -195,8 +195,8 @@ class UuidCache:
             if self.timestamps[uuid_hash] > self.timestamps[best]:
                 best = uuid_hash
 
-        if (int(time.time()) - self.timestamps[uuid_hash]) <= 30:
-            return uuid_hash
+        if (int(time.time()) - self.timestamps[best]) <= 30:
+            return best
 
         return ''
 
