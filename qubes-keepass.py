@@ -814,11 +814,11 @@ class CredentialCollection:
             None
         '''
         credentials = []
-        collection = Secret.Collection.for_alias_sync(service, "default", Secret.CollectionCreateFlags.NONE, None)
 
-        for item in collection.get_items():
-            credential = Credential(item, service)
-            credentials.append(credential)
+        for collection in service.get_collections():
+            for item in collection.get_items():
+                credential = Credential(item, service)
+                credentials.append(credential)
 
         return CredentialCollection(credentials)
 
