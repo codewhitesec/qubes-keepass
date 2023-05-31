@@ -495,8 +495,9 @@ class Credential:
 
         self.meta = parse_qube_list(settings.get('meta'))
         self.qubes = parse_qube_list(settings.get('qubes'))
-        self.trust = settings.get('trust', None)
+        self.trust = settings.get('trust')
         self.timeout = int(settings.get('timeout', Config.get('timeout')))
+        self.icon = settings.get('icon')
 
         if self.trust is not None:
             self.trust = int(self.trust)
@@ -753,13 +754,22 @@ class CredentialCollection:
 
         for credential in self.credentials:
 
+            line = ''
             folder = credential.path.parent.name or 'Root'
 
-            formatted += lcut(credential.title, Config.getint('title_length'))
-            formatted += lcut(folder, Config.getint('folder_length'))
-            formatted += lcut(credential.username, Config.getint('username_length'))
-            formatted += lcut(credential.url, Config.getint('url_length'))
-            formatted += '\n'
+            line += lcut(credential.title, Config.getint('title_length'))
+            line += lcut(folder, Config.getint('folder_length'))
+            line += lcut(credential.username, Config.getint('username_length'))
+            line += lcut(credential.url, Config.getint('url_length'))
+
+            if '-show-icons' in Config.get_rofi_options():
+
+                if credential.icon is not None:
+                    line += f'\x00icon\x1f{credential.icon}'
+
+                line = ' ' + line
+
+            formatted += line + '\n'
 
         return formatted
 
@@ -775,8 +785,13 @@ class CredentialCollection:
         Returns:
             Credential item selected by the user and exit code
         '''
+        title_length = Config.getint('title_length')
+
+        if '-show-icons' in Config.get_rofi_options():
+            title_length += 3
+
         rofi_mesg = f'Selected credential is copied to <b>{qube}</b>\n\n'
-        rofi_mesg += lcut('Title', Config.getint('title_length'))
+        rofi_mesg += lcut('Title', title_length)
         rofi_mesg += lcut('Folder', Config.getint('folder_length'))
         rofi_mesg += lcut('Username', Config.getint('username_length'))
         rofi_mesg += lcut('URL', Config.getint('url_length'))
