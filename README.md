@@ -159,6 +159,8 @@ trust = 4
 * `qubes` - specifies an allow list of qubes for the credential. The credential can only be copied into the specified qubes
 * `trust` - specifies the minimum trust level that a qube needs to be able to receive this credential
 * `meta` - specifies a list of qubes that are only allowed to obtain meta information of the credential (username, url)
+* `icon` - specifies the icon for the credential. Can be a default icon name (e.g. `firefox`) or a file system path. To display
+  icons within *rofi*, you also need to add the `-show-icons` *rofi-option* in your `qubes-keepass.ini` file
 
 
 #### Global Options
