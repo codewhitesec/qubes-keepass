@@ -838,7 +838,7 @@ class CredentialCollection:
         return CredentialCollection(credentials)
 
 
-parser = argparse.ArgumentParser(description='''qubes-keepass v1.0.0 - A rofi based KeePassXC frontend for Qubes''')
+parser = argparse.ArgumentParser(description='''qubes-keepass v1.1.0 - A rofi based KeePassXC frontend for Qubes''')
 parser.add_argument('qube', help='qube to copy the credential to')
 parser.add_argument('--trust-level', type=int, help='numerical trust level of the qube')
 parser.add_argument('--config', help='path to the configuration file')
