@@ -7,7 +7,8 @@ which integrates nicely with the isolation and security features of [Qubes OS](h
 to easily copy credentials to the currently focused Qube, to define allow lists for credentials based on Qube names and to
 automatically clear the Qubes clipboard after a configurable amount of time.
 
-![qubes-keepass](https://user-images.githubusercontent.com/49147108/206440037-cf2108f8-8033-4574-bdbe-88f7943c1457.png)
+![qubes-keepass-example](https://github.com/codewhitesec/qubes-keepass/assets/49147108/9512901f-93f7-4bc4-bd20-951a45000171)
+
 
 *qubes-keepass* is inspired by [rofi-pass](https://github.com/carnager/rofi-pass) which provides a rofi based frontend
 for the password manager [pass](https://www.passwordstore.org/).
@@ -159,6 +160,8 @@ trust = 4
 * `qubes` - specifies an allow list of qubes for the credential. The credential can only be copied into the specified qubes
 * `trust` - specifies the minimum trust level that a qube needs to be able to receive this credential
 * `meta` - specifies a list of qubes that are only allowed to obtain meta information of the credential (username, url)
+* `icon` - specifies the icon for the credential. Can be a default icon name (e.g. `firefox`) or a file system path. To display
+  icons within *rofi*, you also need to add the `-show-icons` *rofi-option* in your `qubes-keepass.ini` file
 
 
 #### Global Options
