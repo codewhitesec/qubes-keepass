@@ -83,8 +83,10 @@ this did not work during our tests.
 Hidden=true
 ```
 
-After restarting the `vault` VM again, the `gnome-keyring-daemon` should no longer start up and you can enable the *Secret
-Service* integration in the *KeePassXC* Tools settings.
+After restarting the `vault` VM again, `gnome-keyring-daemon` should no longer start up and you can enable the *Secret
+Service* integration in the *KeePassXC* Tools settings. If `gnome-keyring-daemon` is still running, reboot your system
+and make sure that you start your `vault` VM by requesting it to execute *KeePassXC* directly. If this does also not work
+read the [FAQ](#FAQ) section.
 
 Additionally, you need to expose the credentials you want to use with *qubes-keepass* to the *Secret Service* within the
 database specific security settings. If you simply want to use your entire database with *qubes-keepass*, allow access
@@ -211,3 +213,25 @@ If you are really concerned about the DBus access, you can configure Keepass to 
 but it could still allow to exfiltrate data from your `vault` into an *online* VM. That being said, the same is true for other Qubes mechanisms like
 [split-SSH](https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/split-ssh.md). If having a malicious process in your `vault` VM that
 exfiltrates data using your clipboard is something you worry about, you should use `ask`. If you like things more comfortable, you should use `allow` instead.
+
+**Q**: I don't know how to stop `gnome-keyring-daemon`!?\
+**A**: Apparently, no one knows. We observed several different behaviors on exactly the same template VMs. As the ultima ratio you can remove the
+executable bit from your `gnome-keyring-daemon`. This method is pretty rough and could potentially break other functionality, but it seemed to work
+quite reliably on our test systems. Just create a [binddir](https://www.qubes-os.org/doc/bind-dirs/) for `gnome-keyring-daemon` and remove the executable
+bit by running `chmod -x /usr/bin/gnome-keyring-daemon`.
+
+**Q**: rofi does not start up, what can I do?\
+**A**: For troubleshooting, you can try to launch `qubes-keepass.py` and `qubes-keepass-dom0.sh` manually. Just run `python3 qubes-keepass.py office` in a terminal
+on your `vault` VM and replace `office` by a qube name you configured credentials for. You should see *rofi* startup or get an error messaghe within the terminal
+that can help you debugging. If everything worked, open a `dom0` terminal and execute something like `sleep 5 && qubes-keepass-dom0.sh`. Within the sleep timeout,
+move the cursor to a qube you configured credentials for. If something goes wrong, you should see an error message within the `dom0` terminal.
+
+**Q**: Credentials are not copied to the clipboard, what can I do?\
+**A**: Make sure that the *qrexec* service in `/etc/qubes-rpc/custom.QubesKeepass` is present and executable in the desired *AppVM*. Also make sure that `xclip` is
+installed. You can test whether the service is working by running `echo -n test | /etc/qubes-rpc/custom.QubesKeepass`. After executing this command, the clipboard of the
+*AppVM* should contain the string `test`.
+
+**Q**: I tried to installed *qubes-kepass* and now everything is broken!\
+**A**: Keep calm, you probably have a typo within one of your policy files. When Qubes encounters a malformed policy, it blocks all *RPC* communication. Run
+`sudo journalctl -b` and check for error messages indicating a malformed policy file. If you do not find it this way, just check the policy files you have edited
+while installing *qubes-keepass*. Also make sure that you changed the qube names used in the example setup to the names used by your environment.
