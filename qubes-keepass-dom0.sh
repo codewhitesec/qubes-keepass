@@ -63,6 +63,14 @@ function main() {
     set -e
     set -x
 
+    qvm-check "${VAULT}"
+
+    if [ $? -ne 0 ]; then
+        echo "[-] Your vault qube ${VAULT} is not running yet."
+        echo "[-] Aborting to prevent unwanted qube startup."
+        return
+    fi
+
     local ID=$(get_id)
     local VM=$(get_xprop "${ID}" '_QUBES_VMNAME(STRING)' 'str')
     local LABEL=$(get_xprop "${ID}" '_QUBES_LABEL(CARDINAL)' 'int')
