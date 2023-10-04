@@ -443,7 +443,7 @@ class Config:
             Config
         '''
         if path is not None:
-            config_path = Path(path)
+            config_file = Path(path)
 
         else:
 
