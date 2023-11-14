@@ -63,7 +63,7 @@ function main() {
     set -e
     set -x
 
-    qvm-check "${VAULT}"
+    qvm-check --running -q "${VAULT}"
 
     if [ $? -ne 0 ]; then
         echo "[-] Your vault qube ${VAULT} is not running yet."
