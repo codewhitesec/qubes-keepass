@@ -31,7 +31,7 @@ Qube to copy credentials to other *AppVMs*:
 
 ```console
 [user@dom0 ~]$ cat /etc/qubes-rpc/policy/custom.QubesKeepass
-vault $anyvm allow notify=true
+vault @anyvm allow notify=yes
 ```
 
 According to your preferences, you could also choose `ask` instead of the `allow` action or remove the `notify=true` option,
