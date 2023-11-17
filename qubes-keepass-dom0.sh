@@ -2,6 +2,7 @@
 
 
 VAULT='vault'
+VERSION='qubes-keepass v1.2.0'
 
 
 function get_id() {
@@ -63,7 +64,7 @@ function main() {
     set -e
     set -x
 
-    qvm-check "${VAULT}"
+    qvm-check --running -q "${VAULT}"
 
     if [ $? -ne 0 ]; then
         echo "[-] Your vault qube ${VAULT} is not running yet."
