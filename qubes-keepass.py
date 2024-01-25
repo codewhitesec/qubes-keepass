@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import time
-import time
+import socket
 import hashlib
 import argparse
 import subprocess
@@ -644,19 +644,17 @@ class Credential:
                 return
 
             print(f'[+] Copying password of credential {self.title} to {qube}.')
-            value = self.get_secret().encode()
+            value = self.get_secret()
 
         elif attribute == 11:
             print(f'[+] Copying username of credential {self.title} to {qube}.')
-            value = self.username.encode()
+            value = self.username
 
         elif attribute == 12:
             print(f'[+] Copying url of credential {self.title} to {qube}.')
-            value = self.url.encode()
+            value = self.url
 
-        process = subprocess.Popen(['qrexec-client-vm', qube, 'custom.QubesKeepass'], stdin=subprocess.PIPE)
-        process.stdin.write(value)
-        process.stdin.close()
+        perform_copy(qube, value)
 
         qube_hash = hashlib.md5(qube.encode()).hexdigest()
         lockfile = Path.home() / f'.qubes-keepass-{qube_hash}.lock'
@@ -675,12 +673,33 @@ class Credential:
 
         else:
             lockfile.unlink()
-
-            process = subprocess.Popen(['qrexec-client-vm', qube, 'custom.QubesKeepass'], stdin=subprocess.PIPE)
-            process.stdin.write(''.encode())
-            process.stdin.close()
+            perform_copy(qube, '')
 
             print(f'[+] Clipboard of {qube} cleared.')
+
+
+def perform_copy(qube: str, data: str) -> None:
+    '''
+    Performs the actual copy operation. Before the data is copied, the function checks
+    whether the qube to copy the data to is the vault qube. In this case, the copy operation
+    isn't performed via qrexec-client-vm, as it does not work for invoking commands within
+    the same qube.
+
+    Parameters:
+        qube                qube to copy the data to
+        data                the data to copy
+
+    Returns:
+        None
+    '''
+    if socket.gethostname() != qube:
+        process = subprocess.Popen(['qrexec-client-vm', qube, 'custom.QubesKeepass'], stdin=subprocess.PIPE)
+
+    else:
+        process = subprocess.Popen(['/etc/qubes-rpc/custom.QubesKeepass'], stdin=subprocess.PIPE)
+
+    process.stdin.write(data.encode())
+    process.stdin.close()
 
 
 class CredentialCollection:
@@ -838,7 +857,7 @@ class CredentialCollection:
         return CredentialCollection(credentials)
 
 
-parser = argparse.ArgumentParser(description='''qubes-keepass v1.2.0 - A rofi based KeePassXC frontend for Qubes''')
+parser = argparse.ArgumentParser(description='''qubes-keepass v1.2.1 - A rofi based KeePassXC frontend for Qubes''')
 parser.add_argument('qube', help='qube to copy the credential to')
 parser.add_argument('--trust-level', type=int, help='numerical trust level of the qube')
 parser.add_argument('--config', help='path to the configuration file')
