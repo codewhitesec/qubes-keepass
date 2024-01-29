@@ -595,6 +595,35 @@ class Credential:
         self.item.load_secret_sync()
         return self.item.get_secret().get_text()
 
+
+    def get_totp(self) -> str:
+        '''
+        Obtain the TOTP token from selected entry
+
+        Parameters:
+            None
+
+        Returns:
+            TOTP token
+
+
+        Current issue with self.item.get_attributes().get('TOTP') does not reload the database.
+        This results in a non renual of the TOTP attribute.
+        '''
+
+        if Config.getboolean('view_totp'):
+            try:
+                import pyotp
+            except ImportError:
+                print(f'[-] To use TOTP the library pyotp is needed')
+                return
+            
+        if "totp" in self.item.get_attributes().get('otp'):
+            otp_value = self.item.get_attributes().get('otp').split("?")[1].split("&")[0].split("=")
+            if otp_value[0] == "secret":
+                return pyotp.TOTP(otp_value[1]).now()
+
+
     def copy_to_qube(self, attribute: int, qube: str, trust_level: int) -> None:
         '''
         Copy the specified attribute to the specified qube. If the credential
@@ -653,6 +682,12 @@ class Credential:
         elif attribute == 12:
             print(f'[+] Copying url of credential {self.title} to {qube}.')
             value = self.url
+
+        elif attribute == 13:
+            if self.attributes.get('TOTP') is None:
+                return
+            print(f'[+] Copying url of TOTP {self.title} to {qube}.')
+            value = self.get_totp()
 
         perform_copy(qube, value)
 
@@ -761,7 +796,7 @@ class CredentialCollection:
     def __str__(self) -> str:
         '''
         The string representiation of a CredentialCollection is a formatted list
-        that can be displayed within rogi.
+        that can be displayed within rofi.
 
         Parameters:
             credentials         list of credentials to display
@@ -772,12 +807,14 @@ class CredentialCollection:
         formatted = ''
 
         for credential in self.credentials:
-
             line = ''
             folder = credential.path.parent.name or 'Root'
 
             line += lcut(credential.title, Config.getint('title_length'))
             line += lcut(folder, Config.getint('folder_length'))
+            if Config.getboolean('view_totp'):
+                totp_state = 'True' if credential.attributes.get('TOTP') is not None else 'None'
+                line += lcut(totp_state, Config.getint('totp_length'))
             line += lcut(credential.username, Config.getint('username_length'))
             line += lcut(credential.url, Config.getint('url_length'))
 
@@ -812,12 +849,15 @@ class CredentialCollection:
         rofi_mesg = f'Selected credential is copied to <b>{qube}</b>\n\n'
         rofi_mesg += lcut('Title', title_length)
         rofi_mesg += lcut('Folder', Config.getint('folder_length'))
+        if Config.getboolean('view_totp'):
+            rofi_mesg += lcut('TOTP', Config.getint('totp_length'))
         rofi_mesg += lcut('Username', Config.getint('username_length'))
         rofi_mesg += lcut('URL', Config.getint('url_length'))
 
         mappings = ['-kb-custom-1', Config.get('copy_password')]
         mappings += ['-kb-custom-2', Config.get('copy_username')]
         mappings += ['-kb-custom-3', Config.get('copy_url')]
+        mappings += ['-kb-custom-4', Config.get('copy_totp')]
 
         print('[+] Starting rofi.')
         process = subprocess.Popen(['rofi'] + Config.get_rofi_options() + ['-mesg', rofi_mesg] + mappings,
@@ -832,7 +872,6 @@ class CredentialCollection:
 
         except ValueError:
             raise RofiAbortedException('rofi selection was aborted by user')
-
         print(f'[+] User selected {self.credentials[selected].title} with return code {process.returncode}')
         return (process.returncode, self.credentials[selected])
 
