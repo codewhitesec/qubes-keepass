@@ -684,10 +684,10 @@ class Credential:
             value = self.url
 
         elif attribute == 13:
-            if self.totp is None:
+            if self.attributes.get('TOTP') is None:
                 return
             print(f'[+] Copying url of TOTP {self.title} to {qube}.')
-            value = self.totp
+            value = self.get_totp()
 
         perform_copy(qube, value)
 
@@ -796,7 +796,7 @@ class CredentialCollection:
     def __str__(self) -> str:
         '''
         The string representiation of a CredentialCollection is a formatted list
-        that can be displayed within rogi.
+        that can be displayed within rofi.
 
         Parameters:
             credentials         list of credentials to display
@@ -807,7 +807,6 @@ class CredentialCollection:
         formatted = ''
 
         for credential in self.credentials:
-
             line = ''
             folder = credential.path.parent.name or 'Root'
 
@@ -858,6 +857,7 @@ class CredentialCollection:
         mappings = ['-kb-custom-1', Config.get('copy_password')]
         mappings += ['-kb-custom-2', Config.get('copy_username')]
         mappings += ['-kb-custom-3', Config.get('copy_url')]
+        mappings += ['-kb-custom-4', Config.get('copy_totp')]
 
         print('[+] Starting rofi.')
         process = subprocess.Popen(['rofi'] + Config.get_rofi_options() + ['-mesg', rofi_mesg] + mappings,
@@ -930,7 +930,7 @@ def main() -> None:
         print("[-] The configuration options 'restricted' and 'unrestricted' are mutually exclusive.")
         print('[-] Configure only one of them and leave the other empty to continue.')
         return
-    
+
     try:
         service = Secret.Service.get_sync(Secret.ServiceFlags.OPEN_SESSION | Secret.ServiceFlags.LOAD_COLLECTIONS)
 
