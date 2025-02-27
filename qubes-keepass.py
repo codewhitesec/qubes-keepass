@@ -818,6 +818,7 @@ class CredentialCollection:
         mappings = ['-kb-custom-1', Config.get('copy_password')]
         mappings += ['-kb-custom-2', Config.get('copy_username')]
         mappings += ['-kb-custom-3', Config.get('copy_url')]
+        mappings += ['-kb-secondary-copy', '']
 
         print('[+] Starting rofi.')
         process = subprocess.Popen(['rofi'] + Config.get_rofi_options() + ['-mesg', rofi_mesg] + mappings,
