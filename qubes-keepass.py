@@ -19,6 +19,12 @@ require_version('Secret', '1')
 from gi.repository import Secret
 
 
+parser = argparse.ArgumentParser(description='''qubes-keepass v1.2.2 - A rofi based KeePassXC frontend for Qubes''')
+parser.add_argument('qube', help='qube to copy the credential to')
+parser.add_argument('--trust-level', type=int, help='numerical trust level of the qube')
+parser.add_argument('--config', help='path to the configuration file')
+
+
 def lcut(item: str, padding: int) -> str:
     '''
     Pad the item to the specified length with spaces or cut it
@@ -856,12 +862,6 @@ class CredentialCollection:
                 credentials.append(credential)
 
         return CredentialCollection(credentials)
-
-
-parser = argparse.ArgumentParser(description='''qubes-keepass v1.2.1 - A rofi based KeePassXC frontend for Qubes''')
-parser.add_argument('qube', help='qube to copy the credential to')
-parser.add_argument('--trust-level', type=int, help='numerical trust level of the qube')
-parser.add_argument('--config', help='path to the configuration file')
 
 
 def main() -> None:
