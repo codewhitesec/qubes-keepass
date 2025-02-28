@@ -2,7 +2,7 @@
 
 
 VAULT='vault'
-VERSION='qubes-keepass v1.2.1'
+VERSION='qubes-keepass v1.2.2'
 
 
 function get_id() {
